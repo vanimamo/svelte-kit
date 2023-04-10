@@ -14,6 +14,15 @@ export default [
 		external: ['ENV', 'HANDLER', ...builtinModules]
 	},
 	{
+		input: 'src/static-serve.js',
+		output: {
+			file: 'files/static-serve.js',
+			format: 'esm'
+		},
+		plugins: [nodeResolve(), commonjs(), json()],
+		external: [...builtinModules]
+	},
+	{
 		input: 'src/env.js',
 		output: {
 			file: 'files/env.js',
@@ -30,7 +39,7 @@ export default [
 			inlineDynamicImports: true
 		},
 		plugins: [nodeResolve(), commonjs(), json()],
-		external: ['ENV', 'MANIFEST', 'SERVER', 'SHIMS', ...builtinModules]
+		external: ['ENV', 'STATIC', 'MANIFEST', 'SERVER', 'SHIMS', ...builtinModules]
 	},
 	{
 		input: 'src/shims.js',

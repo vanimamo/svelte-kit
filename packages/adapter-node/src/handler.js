@@ -1,7 +1,7 @@
 import 'SHIMS';
 import fs from 'node:fs';
 import path from 'node:path';
-import sirv from 'sirv';
+import { sirv } from 'STATIC';
 import { fileURLToPath } from 'node:url';
 import { parse as polka_url_parser } from '@polka/url';
 import { getRequest, setResponse } from '@sveltejs/kit/node';
@@ -25,14 +25,12 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 /**
  * @param {string} path
  * @param {boolean} client
+ * @returns {import('polka').Middleware}
  */
 function serve(path, client = false) {
 	return (
 		fs.existsSync(path) &&
 		sirv(path, {
-			etag: true,
-			gzip: true,
-			brotli: true,
 			setHeaders:
 				client &&
 				((res, pathname) => {
@@ -99,9 +97,9 @@ const ssr = async (req, res) => {
 		);
 	}
 
-	setResponse(
-		res,
-		await server.respond(request, {
+	// TODO If request has header, cookie that specifies a language, translate the file
+
+	const response = await server.respond(request, {
 			platform: { req },
 			getClientAddress: () => {
 				if (address_header) {
@@ -136,8 +134,76 @@ const ssr = async (req, res) => {
 					req.info?.remoteAddress
 				);
 			}
-		})
-	);
+		});
+
+	const headers = Object.fromEntries(response.headers);
+
+	// Don't pass content-length as it will be translated
+	delete headers['content-length'];
+
+	/*if (response.headers.has('set-cookie')) {
+		const header = /!** @type {string} *!/ (response.headers.get('set-cookie'));
+		headers['set-cookie'] = set_cookie_parser.splitCookiesString(header);
+	}*/
+
+	res.writeHead(response.status, headers);
+
+	if (!response.body) {
+		res.end();
+		return;
+	}
+
+	if (response.body.locked) {
+		res.write(
+			'Fatal error: Response body is locked. ' +
+				`This can happen when the response was already read (for example through 'response.json()' or 'response.text()').`
+		);
+		res.end();
+		return;
+	}
+
+	const reader = response.body.getReader();
+
+	if (res.destroyed) {
+		reader.cancel();
+		return;
+	}
+
+	const cancel = (/** @type {Error|undefined} */ error) => {
+		res.off('close', cancel);
+		res.off('error', cancel);
+
+		// If the reader has already been interrupted with an error earlier,
+		// then it will appear here, it is useless, but it needs to be catch.
+		reader.cancel(error).catch(() => {});
+		if (error) res.destroy(error);
+	};
+
+	res.on('close', cancel);
+	res.on('error', cancel);
+
+	next();
+	async function next() {
+		try {
+			for (;;) {
+				const { done, value } = await reader.read();
+
+				if (done) break;
+
+				let text = new TextDecoder('utf-8').decode(value);
+
+				text = text.replaceAll('Email', 'E-mail');
+
+				if (!res.write(text)) {
+					res.once('drain', next);
+					return;
+				}
+			}
+			res.end();
+		} catch (error) {
+			cancel(error instanceof Error ? error : new Error(String(error)));
+		}
+	}
 };
 
 /** @param {import('polka').Middleware[]} handlers */

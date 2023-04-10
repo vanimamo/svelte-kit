@@ -33,12 +33,11 @@
 	},
 	"devDependencies": {
 		"@polka/url": "^1.0.0-next.21",
-		"@sveltejs/kit": "workspace:^",
+		"@sveltejs/kit": "^1.15.1",
 		"@types/node": "^16.18.6",
 		"c8": "^7.12.0",
 		"polka": "^1.0.0-next.22",
 		"rimraf": "^4.0.0",
-		"sirv": "^2.0.2",
 		"typescript": "^4.9.4",
 		"uvu": "^0.5.6"
 	},
@@ -46,6 +45,8 @@
 		"@rollup/plugin-commonjs": "^24.0.0",
 		"@rollup/plugin-json": "^6.0.0",
 		"@rollup/plugin-node-resolve": "^15.0.1",
+		"totalist": "^3.0.0",
+		"mrmime": "^1.0.1",
 		"rollup": "^3.7.0"
 	},
 	"peerDependencies": {
